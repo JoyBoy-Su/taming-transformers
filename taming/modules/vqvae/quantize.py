@@ -209,7 +209,7 @@ class GumbelQuantize(nn.Module):
         z_q = einsum('b n h w, n d -> b d h w', one_hot, self.embed.weight)
         return z_q
 
-
+# quantize: z (z_channels) => z_q(z_channels)
 class VectorQuantizer2(nn.Module):
     """
     Improved version over VectorQuantizer, can be used as a drop-in replacement. Mostly
@@ -217,20 +217,23 @@ class VectorQuantizer2(nn.Module):
     """
     # NOTE: due to a bug the beta term was applied to the wrong term. for
     # backwards compatibility we use the buggy version by default, but you can
-    # specify legacy=False to fix it.
+    # specify legacy=False to fix it.s
     def __init__(self, n_e, e_dim, beta, remap=None, unknown_index="random",
                  sane_index_shape=False, legacy=True):
         super().__init__()
-        self.n_e = n_e
-        self.e_dim = e_dim
+        self.n_e = n_e          # number of embedding (vocab_size) = 1024
+        self.e_dim = e_dim      # embedding dim = 256
         self.beta = beta
         self.legacy = legacy
 
-        self.embedding = nn.Embedding(self.n_e, self.e_dim)
+        # embedding vector (different with transformer embedding)
+        self.embedding = nn.Embedding(self.n_e, self.e_dim) 
         self.embedding.weight.data.uniform_(-1.0 / self.n_e, 1.0 / self.n_e)
 
-        self.remap = remap
+        # why use remap?
+        self.remap = remap      # re map: map the old index to the new index?
         if self.remap is not None:
+            # self.used: (used_n, )
             self.register_buffer("used", torch.tensor(np.load(self.remap)))
             self.re_embed = self.used.shape[0]
             self.unknown_index = unknown_index # "random" or "extra" or integer
@@ -241,17 +244,19 @@ class VectorQuantizer2(nn.Module):
                   f"Using {self.unknown_index} for unknown indices.")
         else:
             self.re_embed = n_e
+        # self.re_embed record the number of embed
 
         self.sane_index_shape = sane_index_shape
 
+    # map index to used
     def remap_to_used(self, inds):
-        ishape = inds.shape
+        ishape = inds.shape # ids: (batch, n), sequence of codebook index
         assert len(ishape)>1
         inds = inds.reshape(ishape[0],-1)
-        used = self.used.to(inds)
-        match = (inds[:,:,None]==used[None,None,...]).long()
-        new = match.argmax(-1)
-        unknown = match.sum(2)<1
+        used = self.used.to(inds)   # move the device
+        match = (inds[:,:,None]==used[None,None,...]).long()    # match: (batch, n, used_n)
+        new = match.argmax(-1)  # (batch, n)
+        unknown = match.sum(2)<1    # axis = -1 is same with axis = 2
         if self.unknown_index == "random":
             new[unknown]=torch.randint(0,self.re_embed,size=new[unknown].shape).to(device=new.device)
         else:
@@ -273,16 +278,20 @@ class VectorQuantizer2(nn.Module):
         assert rescale_logits==False, "Only for interface compatible with Gumbel"
         assert return_logits==False, "Only for interface compatible with Gumbel"
         # reshape z -> (batch, height, width, channel) and flatten
-        z = rearrange(z, 'b c h w -> b h w c').contiguous()
+        z = rearrange(z, 'b c h w -> b h w c').contiguous() # why not permute
         z_flattened = z.view(-1, self.e_dim)
         # distances from z to embeddings e_j (z - e)^2 = z^2 + e^2 - 2 e * z
+        # calculate the distance: from d to each z
 
         d = torch.sum(z_flattened ** 2, dim=1, keepdim=True) + \
             torch.sum(self.embedding.weight**2, dim=1) - 2 * \
             torch.einsum('bd,dn->bn', z_flattened, rearrange(self.embedding.weight, 'n d -> d n'))
-
-        min_encoding_indices = torch.argmin(d, dim=1)
+            # z flattened: (n, embedding_dim) embedding: (n_e, embedding_dim)
+            # rearrange(self.embedding.weight, 'n d -> d n'): (embedding_dim, n_e)
+        # d: (n, n_e)
+        min_encoding_indices = torch.argmin(d, dim=1)   # min_encoding_indices: (n, )
         z_q = self.embedding(min_encoding_indices).view(z.shape)
+        # self.embedding(indices): indices(n, ) => embeddings(n, embedding_dim)
         perplexity = None
         min_encodings = None
 

@@ -29,8 +29,11 @@ class ImagePaths(Dataset):
         self.labels["file_path_"] = paths
         self._length = len(paths)
 
+        # set image size
         if self.size is not None and self.size > 0:
             self.rescaler = albumentations.SmallestMaxSize(max_size = self.size)
+            # crop: height=self.size,width=self.size, s.t. image resolution: size * size
+            # (config.size = 256)
             if not self.random_crop:
                 self.cropper = albumentations.CenterCrop(height=self.size,width=self.size)
             else:

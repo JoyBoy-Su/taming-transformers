@@ -79,8 +79,8 @@ class Net2NetTransformer(pl.LightningModule):
 
     def forward(self, x, c):    # x is input image, c is condition
         # one step to produce the logits
-        _, z_indices = self.encode_to_z(x)
-        _, c_indices = self.encode_to_c(c)
+        _, z_indices = self.encode_to_z(x)  # encode image
+        _, c_indices = self.encode_to_c(c)  # encode condition
 
         if self.training and self.pkeep < 1.0:
             mask = torch.bernoulli(self.pkeep*torch.ones(z_indices.shape,
@@ -91,15 +91,15 @@ class Net2NetTransformer(pl.LightningModule):
         else:
             a_indices = z_indices
 
-        cz_indices = torch.cat((c_indices, a_indices), dim=1)
+        cz_indices = torch.cat((c_indices, a_indices), dim=1)   # concat (prepend condition)
 
         # target includes all sequence elements (no need to handle first one
         # differently because we are conditioning)
-        target = z_indices
+        target = z_indices  # target: image indices
         # make the prediction
-        logits, _ = self.transformer(cz_indices[:, :-1])
+        logits, _ = self.transformer(cz_indices[:, :-1])    # predict next token
         # cut off conditioning outputs - output i corresponds to p(z_i | z_{<i}, c)
-        logits = logits[:, c_indices.shape[1]-1:]
+        logits = logits[:, c_indices.shape[1]-1:]   # from the last condition index to the last logit
 
         return logits, target
 
@@ -191,10 +191,10 @@ class Net2NetTransformer(pl.LightningModule):
         # zshape: (batch, embed_dim, h, w)
         index = self.permuter(index, reverse=True)
         bhwc = (zshape[0],zshape[2],zshape[3],zshape[1])    # c is embed_dim
-        print(f"bhwc: {bhwc}.")
+        # print(f"bhwc: {bhwc}.")
         quant_z = self.first_stage_model.quantize.get_codebook_entry(
             index.reshape(-1), shape=bhwc)  # shape is used to control the quant_z.shape
-        print(f"quant_z.shape: {quant_z.shape}")
+        # print(f"quant_z.shape: {quant_z.shape}")
         x = self.first_stage_model.decode(quant_z)  # quant_z: b, h, w, c(c is embed_dim)
         return x
 
@@ -298,6 +298,7 @@ class Net2NetTransformer(pl.LightningModule):
         return x, c
 
     def shared_step(self, batch, batch_idx):
+        # forward step
         x, c = self.get_xc(batch)
         logits, target = self(x, c)
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), target.reshape(-1))

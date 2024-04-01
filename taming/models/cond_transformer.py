@@ -174,6 +174,7 @@ class Net2NetTransformer(pl.LightningModule):
 
     @torch.no_grad()
     def encode_to_c(self, c):
+        # encode to condition (via cond stage model)
         if self.downsample_cond_size > -1:
             c = F.interpolate(c, size=(self.downsample_cond_size, self.downsample_cond_size))
         quant_c, _, [_,_,indices] = self.cond_stage_model.encode(c)

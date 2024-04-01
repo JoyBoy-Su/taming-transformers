@@ -48,7 +48,7 @@ print(f"segmentation shape: {segmentation.shape}")
 # resolution (683, 1024), segmentation channels: 182
 
 # encode
-seg_code, seg_indices = model.encode_to_c(segmentation)
+seg_code, seg_indices = model.encode_to_c(segmentation) # encode to condition
 print(f"seg_code: {seg_code.shape}")
 print(f"seg_indices: {seg_indices.shape}")
 assert seg_code.shape[0] * seg_code.shape[2] * seg_code.shape[3] == seg_indices.shape[0]

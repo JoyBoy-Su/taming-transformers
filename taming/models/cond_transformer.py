@@ -77,6 +77,8 @@ class Net2NetTransformer(pl.LightningModule):
             model.train = disabled_train
             self.cond_stage_model = model
 
+    # input image and condition, encode x and c, calculate logits
+    # end-to-end?
     def forward(self, x, c):    # x is input image, c is condition
         # one step to produce the logits
         _, z_indices = self.encode_to_z(x)  # encode image
@@ -279,8 +281,9 @@ class Net2NetTransformer(pl.LightningModule):
         log["samples_det"] = x_sample_det
         return log
 
+    # related to dataset format
     def get_input(self, key, batch):
-        x = batch[key]
+        x = batch[key]  # x is an image: (batch, h, w, c)
         if len(x.shape) == 3:
             x = x[..., None]
         if len(x.shape) == 4:
@@ -290,8 +293,8 @@ class Net2NetTransformer(pl.LightningModule):
         return x
 
     def get_xc(self, batch, N=None):
-        x = self.get_input(self.first_stage_key, batch)
-        c = self.get_input(self.cond_stage_key, batch)
+        x = self.get_input(self.first_stage_key, batch) # image
+        c = self.get_input(self.cond_stage_key, batch)  # condition
         if N is not None:
             x = x[:N]
             c = c[:N]
@@ -301,8 +304,9 @@ class Net2NetTransformer(pl.LightningModule):
         # forward step
         x, c = self.get_xc(batch)
         logits, target = self(x, c)
+        # forward process: calculate encode x and encode c, and predict logits, return logits
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), target.reshape(-1))
-        return loss
+        return loss # cross entropy loss
 
     def training_step(self, batch, batch_idx):
         loss = self.shared_step(batch, batch_idx)

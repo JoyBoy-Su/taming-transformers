@@ -46,7 +46,7 @@ class ImageNetBase(Dataset):
         self._prepare()
         self._prepare_synset_to_human()
         self._prepare_idx_to_synset()
-        self._load()
+        self._load()    # load data from data path
 
     def __len__(self):
         return len(self.data)
@@ -114,7 +114,7 @@ class ImageNetBase(Dataset):
             "class_label": np.array(self.class_labels),
             "human_label": np.array(self.human_labels),
         }
-        self.data = ImagePaths(self.abspaths,
+        self.data = ImagePaths(self.abspaths,   # abspaths is image paths
                                labels=labels,
                                size=retrieve(self.config, "size", default=0),
                                random_crop=self.random_crop)

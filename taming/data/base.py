@@ -20,13 +20,14 @@ class ConcatDatasetWithIndex(ConcatDataset):
         return self.datasets[dataset_idx][sample_idx], dataset_idx
 
 
+# base model for load dataset (images)
 class ImagePaths(Dataset):
     def __init__(self, paths, size=None, random_crop=False, labels=None):
         self.size = size
         self.random_crop = random_crop
 
         self.labels = dict() if labels is None else labels
-        self.labels["file_path_"] = paths
+        self.labels["file_path_"] = paths   # image paths
         self._length = len(paths)
 
         # set image size

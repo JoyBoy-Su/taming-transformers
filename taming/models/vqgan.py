@@ -16,7 +16,7 @@ class VQModel(pl.LightningModule):
                  n_embed,
                  embed_dim,
                  ckpt_path=None,
-                 ignore_keys=[],
+                 ignore_keys=[],        # we can control init weights through ignore_keys
                  image_key="image",
                  colorize_nlabels=None,
                  monitor=None,
@@ -27,7 +27,7 @@ class VQModel(pl.LightningModule):
         self.image_key = image_key
         self.encoder = Encoder(**ddconfig)  # encoder: in_channels => z_channels
         self.decoder = Decoder(**ddconfig)  # decoder: z_channels => out_channels
-        self.loss = instantiate_from_config(lossconfig)
+        self.loss = instantiate_from_config(lossconfig) # init loss function (VQLPIPSWithDiscriminator)
         self.quantize = VectorQuantizer(n_embed, embed_dim, beta=0.25,
                                         remap=remap, sane_index_shape=sane_index_shape)
         # quant conv: z_channels => codebook embed_dim (maybe the same)
@@ -35,6 +35,7 @@ class VQModel(pl.LightningModule):
         # quant conv: codebook embed_dim => z_channels (maybe the same)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
         if ckpt_path is not None:
+            # if ckpt is not none (in the yaml), load the pretrained weights
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
         self.image_key = image_key
         if colorize_nlabels is not None:
@@ -50,8 +51,8 @@ class VQModel(pl.LightningModule):
             for ik in ignore_keys:
                 if k.startswith(ik):
                     print("Deleting key {} from state_dict.".format(k))
-                    del sd[k]
-        self.load_state_dict(sd, strict=False)
+                    del sd[k]   # if the key is ingored, delete it
+        self.load_state_dict(sd, strict=False)  # set pretrained weights
         print(f"Restored from {path}")
 
     def encode(self, x):
@@ -78,18 +79,21 @@ class VQModel(pl.LightningModule):
         return dec, diff
 
     def get_input(self, batch, k):
-        x = batch[k]
+        x = batch[k]    # get image from batch, batch: {"image":,,,}
         if len(x.shape) == 3:
             x = x[..., None]
         x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format)
         return x.float()
 
     def training_step(self, batch, batch_idx, optimizer_idx):
+        # training step, for pytorch lightning module (trainer.fit)
         x = self.get_input(batch, self.image_key)
-        xrec, qloss = self(x)
+        xrec, qloss = self(x)   # encode and decode: quant, diff, _ = self.encode(input); dec = self.decode(quant)
+        # xrec is reconstruct image, qloss is quantize loss (|| z_q - z ||2)
 
-        if optimizer_idx == 0:
+        if optimizer_idx == 0:  # optimizer means generate or discriminate
             # autoencode
+            # generate, reconstruct loss
             aeloss, log_dict_ae = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
                                             last_layer=self.get_last_layer(), split="train")
 
@@ -99,6 +103,7 @@ class VQModel(pl.LightningModule):
 
         if optimizer_idx == 1:
             # discriminator
+            # discriminate, cross entropy loss
             discloss, log_dict_disc = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
                                             last_layer=self.get_last_layer(), split="train")
             self.log("train/discloss", discloss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
@@ -123,6 +128,7 @@ class VQModel(pl.LightningModule):
         return self.log_dict
 
     def configure_optimizers(self):
+        # set optimizer for training VQModel
         lr = self.learning_rate
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+

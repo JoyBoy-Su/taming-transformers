@@ -33,12 +33,12 @@ class Net2NetTransformer(pl.LightningModule):
         self.sos_token = sos_token
         self.first_stage_key = first_stage_key
         self.cond_stage_key = cond_stage_key
-        self.init_first_stage_from_ckpt(first_stage_config)
-        self.init_cond_stage_from_ckpt(cond_stage_config)
+        self.init_first_stage_from_ckpt(first_stage_config) # init first stage model (VQModel)
+        self.init_cond_stage_from_ckpt(cond_stage_config)   # init cond stage model
         if permuter_config is None:
             permuter_config = {"target": "taming.modules.transformer.permuter.Identity"}
         self.permuter = instantiate_from_config(config=permuter_config)
-        self.transformer = instantiate_from_config(config=transformer_config)
+        self.transformer = instantiate_from_config(config=transformer_config)   # init transformer
 
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
@@ -77,7 +77,7 @@ class Net2NetTransformer(pl.LightningModule):
             model.train = disabled_train
             self.cond_stage_model = model
 
-    def forward(self, x, c):
+    def forward(self, x, c):    # x is input image, c is condition
         # one step to produce the logits
         _, z_indices = self.encode_to_z(x)
         _, c_indices = self.encode_to_c(c)

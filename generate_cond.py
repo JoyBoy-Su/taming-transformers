@@ -1,6 +1,9 @@
 import sys
 import yaml
 
+from PIL import Image
+import numpy as np
+
 import torch
 
 from omegaconf import OmegaConf
@@ -11,8 +14,8 @@ def save_image(s, name):
     s = s.detach().cpu().numpy().transpose(0,2,3,1)[0]
     s = ((s+1.0)*127.5).clip(0,255).astype(np.uint8)
     s = Image.fromarray(s)
-    s.save(f"./generate_imgs/{name}.jpg")
-    print(f"save generate_imgs/{name}.jpg.")
+    s.save(f"./generate_imgs/{name}.png")
+    print(f"save generate_imgs/{name}.png.")
 
 # set path
 sys.path.append(".")
@@ -32,12 +35,11 @@ print(f"missing: {missing}")
 print(f"unexpected: {unexpected}")
 # cuda
 torch.cuda.set_device(1)    # cuda:1
-model.cuda().eval()
+model.cuda().eval()     # 6326MiB, 6G
 
 # load segmentation image
-from PIL import Image
-import numpy as np
-segmentation_path = "data/sflckr_segmentations/norway/25735082181_999927fe5a_b.png" # segmentation image
+seg_name = "seg2"
+segmentation_path = f"{seg_name}.png" # segmentation image
 segmentation = Image.open(segmentation_path)
 segmentation = np.array(segmentation)
 segmentation = np.eye(182)[segmentation]
@@ -49,7 +51,7 @@ print(f"segmentation shape: {segmentation.shape}")
 seg_code, seg_indices = model.encode_to_c(segmentation)
 print(f"seg_code: {seg_code.shape}")
 print(f"seg_indices: {seg_indices.shape}")
-assert seg_code.shape[0] * seg_code.shape[2] * seg_code.shape[3] == seg_indices[0]
+assert seg_code.shape[0] * seg_code.shape[2] * seg_code.shape[3] == seg_indices.shape[0]
 # segmentation_rec = model.cond_stage_model.decode(seg_code)  # reconstruct
 
 # random indices
@@ -69,7 +71,7 @@ seg_indices = seg_indices.reshape(seg_code.shape[0], seg_code.shape[2], seg_code
 # generate image via auto regressive
 temperature = 1.0
 top_k = 100
-update_every = 100
+update_every = 500
 # generate high resolution image: sliding attention
 for i in range(0, img_code_shape[2]):
     # loop for h, local i is the pos i in the patch
@@ -114,8 +116,8 @@ for i in range(0, img_code_shape[2]):
 
         # record
         step = i * img_code_shape[3] + j
-        if step % update_every or step == img_code_shape[2] * img_code_shape[3] - 1:
+        if step % update_every == 0 or step == img_code_shape[2] * img_code_shape[3] - 1:
             # sample
             img_sample = model.decode_to_img(img_indices, img_code_shape)
             # save image
-            save_image(img_sample, f"step_{step}")
+            save_image(img_sample, f"{seg_name}_step_{step}")

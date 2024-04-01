@@ -191,8 +191,10 @@ class Net2NetTransformer(pl.LightningModule):
         # zshape: (batch, embed_dim, h, w)
         index = self.permuter(index, reverse=True)
         bhwc = (zshape[0],zshape[2],zshape[3],zshape[1])    # c is embed_dim
+        print(f"bhwc: {bhwc}.")
         quant_z = self.first_stage_model.quantize.get_codebook_entry(
             index.reshape(-1), shape=bhwc)  # shape is used to control the quant_z.shape
+        print(f"quant_z.shape: {quant_z.shape}")
         x = self.first_stage_model.decode(quant_z)  # quant_z: b, h, w, c(c is embed_dim)
         return x
 

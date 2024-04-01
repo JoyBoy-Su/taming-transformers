@@ -55,13 +55,14 @@ class VQModel(pl.LightningModule):
         print(f"Restored from {path}")
 
     def encode(self, x):
+        # encode x(img): img => code
         h = self.encoder(x)
         h = self.quant_conv(h)
         quant, emb_loss, info = self.quantize(h)
-        return quant, emb_loss, info
+        return quant, emb_loss, info    # info contains indices
 
     def decode(self, quant):
-        # input quant: (batch, h, w, embed_dim)?
+        # input quant: (batch, embed_dim, h, w)
         quant = self.post_quant_conv(quant) # embed_dim => z_channels
         dec = self.decoder(quant)   # decode: (b, z_channels, h, w) => (b, och, height, weight)
         return dec

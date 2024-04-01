@@ -337,7 +337,7 @@ class VectorQuantizer2(nn.Module):
         if shape is not None:
             z_q = z_q.view(shape)
             # reshape back to match original input shape
-            z_q = z_q.permute(0, 3, 1, 2).contiguous()
+            z_q = z_q.permute(0, 3, 1, 2).contiguous()  # permute => (batch, embed_dim, h, w)
 
         return z_q
 

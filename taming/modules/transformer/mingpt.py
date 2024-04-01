@@ -170,7 +170,7 @@ class GPT(nn.Module):
         x = self.drop(token_embeddings + position_embeddings)
         x = self.blocks(x)
         x = self.ln_f(x)
-        logits = self.head(x)
+        logits = self.head(x)   # x: (batch, max_len, embed_dim) => (batch, max_len, vocab_size)
 
         # if we are given some desired targets also calculate the loss
         loss = None

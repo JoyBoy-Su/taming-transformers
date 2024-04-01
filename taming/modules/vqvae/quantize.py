@@ -321,15 +321,19 @@ class VectorQuantizer2(nn.Module):
         return z_q, loss, (perplexity, min_encodings, min_encoding_indices)
 
     def get_codebook_entry(self, indices, shape):
+        # get embedding vector corresponding to the indices
+        # indices: (b, h, w); shape: (b, h, w, c), c is embed_dim
         # shape specifying (batch, height, width, channel)
+        # remap the indices
         if self.remap is not None:
             indices = indices.reshape(shape[0],-1) # add batch axis
             indices = self.unmap_to_all(indices)
             indices = indices.reshape(-1) # flatten again
 
         # get quantized latent vectors
-        z_q = self.embedding(indices)
+        z_q = self.embedding(indices)   # z_q: (b, h, w, embed_dim)
 
+        # control z_q.shape
         if shape is not None:
             z_q = z_q.view(shape)
             # reshape back to match original input shape

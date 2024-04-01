@@ -25,12 +25,14 @@ class VQModel(pl.LightningModule):
                  ):
         super().__init__()
         self.image_key = image_key
-        self.encoder = Encoder(**ddconfig)
-        self.decoder = Decoder(**ddconfig)
+        self.encoder = Encoder(**ddconfig)  # encoder: in_channels => z_channels
+        self.decoder = Decoder(**ddconfig)  # decoder: z_channels => out_channels
         self.loss = instantiate_from_config(lossconfig)
         self.quantize = VectorQuantizer(n_embed, embed_dim, beta=0.25,
                                         remap=remap, sane_index_shape=sane_index_shape)
+        # quant conv: z_channels => codebook embed_dim (maybe the same)
         self.quant_conv = torch.nn.Conv2d(ddconfig["z_channels"], embed_dim, 1) # z_channels => vector embedding dim, same?
+        # quant conv: codebook embed_dim => z_channels (maybe the same)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
@@ -59,8 +61,9 @@ class VQModel(pl.LightningModule):
         return quant, emb_loss, info
 
     def decode(self, quant):
-        quant = self.post_quant_conv(quant)
-        dec = self.decoder(quant)
+        # input quant: (batch, h, w, embed_dim)?
+        quant = self.post_quant_conv(quant) # embed_dim => z_channels
+        dec = self.decoder(quant)   # decode: (b, z_channels, h, w) => (b, och, height, weight)
         return dec
 
     def decode_code(self, code_b):

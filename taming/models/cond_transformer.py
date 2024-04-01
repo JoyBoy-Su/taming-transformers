@@ -177,17 +177,22 @@ class Net2NetTransformer(pl.LightningModule):
         if self.downsample_cond_size > -1:
             c = F.interpolate(c, size=(self.downsample_cond_size, self.downsample_cond_size))
         quant_c, _, [_,_,indices] = self.cond_stage_model.encode(c)
+        # quant_c is the zq (latent representation after vq)
+        # the second item is the vq loss
+        # indices is min_encoding_indices (codebook indices)
         if len(indices.shape) > 2:
             indices = indices.view(c.shape[0], -1)
         return quant_c, indices
 
     @torch.no_grad()
     def decode_to_img(self, index, zshape):
+        # input: indices (batch, h, w); output: image (batch, out_channels, height, width) 
+        # zshape: (batch, embed_dim, h, w)
         index = self.permuter(index, reverse=True)
-        bhwc = (zshape[0],zshape[2],zshape[3],zshape[1])
+        bhwc = (zshape[0],zshape[2],zshape[3],zshape[1])    # c is embed_dim
         quant_z = self.first_stage_model.quantize.get_codebook_entry(
-            index.reshape(-1), shape=bhwc)
-        x = self.first_stage_model.decode(quant_z)
+            index.reshape(-1), shape=bhwc)  # shape is used to control the quant_z.shape
+        x = self.first_stage_model.decode(quant_z)  # quant_z: b, h, w, c(c is embed_dim)
         return x
 
     @torch.no_grad()

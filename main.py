@@ -523,7 +523,7 @@ if __name__ == "__main__":
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs) # init trainer
 
         # data
-        data = instantiate_from_config(config.data) # load dataset
+        data = instantiate_from_config(config.data) # load dataset (imagenet: ImageTrain)
         # NOTE according to https://pytorch-lightning.readthedocs.io/en/latest/datamodules.html
         # calling these ourselves should not be necessary but it is.
         # lightning still takes care of proper multiprocessing though

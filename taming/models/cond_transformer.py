@@ -84,6 +84,7 @@ class Net2NetTransformer(pl.LightningModule):
         _, z_indices = self.encode_to_z(x)  # encode image
         _, c_indices = self.encode_to_c(c)  # encode condition
 
+        # random change indices for generalization performance
         if self.training and self.pkeep < 1.0:
             mask = torch.bernoulli(self.pkeep*torch.ones(z_indices.shape,
                                                          device=z_indices.device))

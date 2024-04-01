@@ -51,7 +51,7 @@ class ImagePaths(Dataset):
         if not image.mode == "RGB":
             image = image.convert("RGB")
         image = np.array(image).astype(np.uint8)
-        image = self.preprocessor(image=image)["image"]
+        image = self.preprocessor(image=image)["image"] # resolution
         image = (image/127.5 - 1.0).astype(np.float32)
         return image
 
@@ -60,6 +60,16 @@ class ImagePaths(Dataset):
         example["image"] = self.preprocess_image(self.labels["file_path_"][i])
         for k in self.labels:
             example[k] = self.labels[k][i]
+        # different dataset has different labels
+        # that meas different datasets has different dataformat
+        # ImageNet:
+        # labels = {
+        #     "relpath": np.array(self.relpaths),
+        #     "synsets": np.array(self.synsets),
+        #     "class_label": np.array(self.class_labels),
+        #     "human_label": np.array(self.human_labels),
+        # }
+        # add label: file_path_
         return example
 
 

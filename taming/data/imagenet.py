@@ -109,10 +109,10 @@ class ImageNetBase(Dataset):
         self.human_labels = [human_dict[s] for s in self.synsets]
 
         labels = {
-            "relpath": np.array(self.relpaths),
-            "synsets": np.array(self.synsets),
-            "class_label": np.array(self.class_labels),
-            "human_label": np.array(self.human_labels),
+            "relpath": np.array(self.relpaths),     # relative path
+            "synsets": np.array(self.synsets),      # synsets name or id?
+            "class_label": np.array(self.class_labels), # synsets's representation
+            "human_label": np.array(self.human_labels), # label which is earier to understand
         }
         self.data = ImagePaths(self.abspaths,   # abspaths is image paths
                                labels=labels,

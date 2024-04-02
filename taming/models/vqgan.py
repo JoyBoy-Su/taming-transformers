@@ -56,6 +56,17 @@ class VQModel(pl.LightningModule):
                     del sd[k]   # if the key is ingored, delete it
         self.load_state_dict(sd, strict=False)  # set pretrained weights
         print(f"Restored from {path}")
+        self.pretrained_keys = list(sd.keys())
+    
+    # freaze all the weights load from pretrained model
+    def freeze_pretrained_weights(self):
+        # customization
+        for name, param in self.named_parameters():  
+            if name in self.pretrained_keys:
+                param.requires_grad = False  
+                print(f"Frozen parameter: {name}")  
+            else:
+                print(f"Trainable parameter: {name}")  
 
     def encode(self, x):
         # encode x(img): img => code
@@ -131,7 +142,8 @@ class VQModel(pl.LightningModule):
 
     def configure_optimizers(self):
         # set optimizer for training VQModel
-        lr = self.learning_rate
+        # lr = self.learning_rate
+        lr = 4.5e-4
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.quantize.parameters())+

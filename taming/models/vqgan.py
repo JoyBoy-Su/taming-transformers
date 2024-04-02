@@ -27,7 +27,9 @@ class VQModel(pl.LightningModule):
         self.image_key = image_key
         self.encoder = Encoder(**ddconfig)  # encoder: in_channels => z_channels
         self.decoder = Decoder(**ddconfig)  # decoder: z_channels => out_channels
+        # print("decoder done, init loss module.")
         self.loss = instantiate_from_config(lossconfig) # init loss function (VQLPIPSWithDiscriminator)
+        # print("loss module done.")
         self.quantize = VectorQuantizer(n_embed, embed_dim, beta=0.25,
                                         remap=remap, sane_index_shape=sane_index_shape)
         # quant conv: z_channels => codebook embed_dim (maybe the same)

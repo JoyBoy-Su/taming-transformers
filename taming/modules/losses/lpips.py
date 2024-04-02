@@ -14,18 +14,27 @@ class LPIPS(nn.Module):
         super().__init__()
         self.scaling_layer = ScalingLayer()
         self.chns = [64, 128, 256, 512, 512]  # vg16 features
-        self.net = vgg16(pretrained=True, requires_grad=False)
+        self.net = vgg16(pretrained=True, requires_grad=False)  # load vgg and pretrained weights, and freaze it.
         self.lin0 = NetLinLayer(self.chns[0], use_dropout=use_dropout)
         self.lin1 = NetLinLayer(self.chns[1], use_dropout=use_dropout)
         self.lin2 = NetLinLayer(self.chns[2], use_dropout=use_dropout)
         self.lin3 = NetLinLayer(self.chns[3], use_dropout=use_dropout)
         self.lin4 = NetLinLayer(self.chns[4], use_dropout=use_dropout)
-        self.load_from_pretrained()
+        self.load_from_pretrained() # load lin layers weights
+        # freaze all the pretrained weights, include vgg and lin layers
         for param in self.parameters():
             param.requires_grad = False
 
     def load_from_pretrained(self, name="vgg_lpips"):
-        ckpt = get_ckpt_path(name, "taming/modules/autoencoder/lpips")
+        # print("load lpips loss module from pretrained.")
+        ckpt = get_ckpt_path(name, "taming/modules/autoencoder/lpips")  # default vgg model path
+        """
+        lin0.model.1.weight
+        lin1.model.1.weight
+        lin2.model.1.weight
+        lin3.model.1.weight
+        lin4.model.1.weight
+        """
         self.load_state_dict(torch.load(ckpt, map_location=torch.device("cpu")), strict=False)
         print("loaded pretrained LPIPS loss from {}".format(ckpt))
 

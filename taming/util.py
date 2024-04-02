@@ -36,6 +36,7 @@ def md5_hash(path):
 def get_ckpt_path(name, root, check=False):
     assert name in URL_MAP
     path = os.path.join(root, CKPT_MAP[name])
+    # print(f"ckpt path: {path}.")
     if not os.path.exists(path) or (check and not md5_hash(path) == MD5_MAP[name]):
         print("Downloading {} model from {} to {}".format(name, URL_MAP[name], path))
         download(URL_MAP[name], path)

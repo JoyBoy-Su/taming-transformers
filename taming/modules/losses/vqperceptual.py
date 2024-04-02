@@ -38,10 +38,13 @@ class VQLPIPSWithDiscriminator(nn.Module):
                  perceptual_weight=1.0, use_actnorm=False, disc_conditional=False,
                  disc_ndf=64, disc_loss="hinge"):
         super().__init__()
+        # print("init vq lpips with discriminator loss.")
         assert disc_loss in ["hinge", "vanilla"]
         self.codebook_weight = codebook_weight
         self.pixel_weight = pixelloss_weight
-        self.perceptual_loss = LPIPS().eval()
+        # print("codebook and pixel weight done.")
+        self.perceptual_loss = LPIPS().eval()   # load lpips loss module (vgg eval)
+        # print("perceptual_loss done.")
         self.perceptual_weight = perceptual_weight
 
         self.discriminator = NLayerDiscriminator(input_nc=disc_in_channels,

@@ -59,14 +59,14 @@ def custom_collate(batch):
     return {"image": image_tensor}
 
 train_set = TestTrainSet("naruto.png")
-train_loader = DataLoader(train_set, batch_size=16, shuffle=True, collate_fn=custom_collate)
+train_loader = DataLoader(train_set, batch_size=12, shuffle=True, collate_fn=custom_collate)
 
 # load pretrained weights and ignore decoder and discriminator
 vqgan_model.init_from_ckpt(ckpt_path, ignore_keys=["decoder", "loss.discriminator"])
 vqgan_model.freeze_pretrained_weights()
 
 # train
-trainer = Trainer(gpus=[1], max_epochs=30)
+trainer = Trainer(gpus=[1], max_epochs=50)
 trainer.fit(vqgan_model, train_loader)
 # save ckpt
 trainer.save_checkpoint("checkpoints/reverse_30_epochs.ckpt")

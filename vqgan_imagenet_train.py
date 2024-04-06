@@ -8,27 +8,11 @@ import numpy as np
 
 from omegaconf import OmegaConf
 from pytorch_lightning.trainer import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader, Dataset
 
 
 from taming.models.vqgan import VQModel
-
-os.environ["TORCH_HOME"] = "/data/jdsu/ckpts/torch"
-torch.cuda.set_device(1)
-
-# load ckpt
-ckpt_path = "./logs/vqgan_imagenet_f16_1024/checkpoints/last.ckpt"
-# load model config
-config_path = "./logs/vqgan_imagenet_f16_1024/configs/vqgan_imagenet_f16_1024.yaml"
-config = OmegaConf.load(config_path)
-# print(config["model"]["params"])
-print(f"pretrained model config: \n{yaml.dump(OmegaConf.to_container(config.model.params))}")
-
-# load vqgan model, include encoder, decoder, quantize, and loss module
-# vqgan_model = VQModel(**config.model.params).eval()  # 900M
-vqgan_model = VQModel(**config.model.params) # 900M
-print(vqgan_model)
-
 
 # train: load data
 # this dataset only contains 1 image
@@ -58,16 +42,47 @@ def custom_collate(batch):
     image_tensor = torch.stack(image_tensor, 0, out=None)
     return {"image": image_tensor}
 
-train_set = TestTrainSet("naruto.png")
-train_loader = DataLoader(train_set, batch_size=12, shuffle=True, collate_fn=custom_collate)
+if __name__ == "__main__":
+    os.environ["TORCH_HOME"] = "/data/jdsu/ckpts/torch"
+    torch.cuda.set_device(1)
 
-# load pretrained weights and ignore decoder and discriminator
-vqgan_model.init_from_ckpt(ckpt_path, ignore_keys=["decoder", "loss.discriminator"])
-vqgan_model.freeze_pretrained_weights()
+    # load ckpt
+    ckpt_path = "./logs/vqgan_imagenet_f16_1024/checkpoints/last.ckpt"
+    # load model config
+    config_path = "./logs/vqgan_imagenet_f16_1024/configs/vqgan_imagenet_f16_1024.yaml"
+    config = OmegaConf.load(config_path)
+    # print(config["model"]["params"])
+    print(f"pretrained model config: \n{yaml.dump(OmegaConf.to_container(config.model.params))}")
 
-# train
-trainer = Trainer(gpus=[1], max_epochs=50)
-trainer.fit(vqgan_model, train_loader)
-# save ckpt
-trainer.save_checkpoint("checkpoints/reverse_30_epochs.ckpt")
+    # load vqgan model, include encoder, decoder, quantize, and loss module
+    # vqgan_model = VQModel(**config.model.params).eval()  # 900M
+    vqgan_model = VQModel(**config.model.params) # 900M
+    print(vqgan_model)
 
+    # train set
+    train_set = TestTrainSet("naruto.png")
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, collate_fn=custom_collate)
+    # val_set = TestTrainSet("naruto.png", length=1)
+    # val_loader = DataLoader(val_set, batch_size=1, collate_fn=custom_collate)
+
+    # load pretrained weights and ignore decoder and discriminator
+    vqgan_model.init_from_ckpt(ckpt_path, ignore_keys=["decoder", "loss.discriminator"])
+    vqgan_model.freeze_pretrained_weights()
+
+    # train
+    checkpoint_callback = ModelCheckpoint(
+            monitor="train/aeloss",
+            dirpath="./checkpoints/",
+            filename="reverse-lr4_5e_6-{epoch:02d}-{train/aeloss:.2f}"
+        )
+    trainer = Trainer(
+        accelerator="gpu",
+        devices=[0, 1, 2, 3], 
+        max_epochs=300,
+        callbacks = [checkpoint_callback]
+    )
+    trainer.fit(vqgan_model, train_loader)
+    # save ckpt
+    # trainer.save_checkpoint("checkpoints/reverse_100_epochs.ckpt")
+
+    print(f"best checkpoint path: {checkpoint_callback.best_model_path}.")

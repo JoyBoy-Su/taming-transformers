@@ -62,8 +62,8 @@ if __name__ == "__main__":
     # train set
     train_set = TestTrainSet("naruto.png")
     train_loader = DataLoader(train_set, batch_size=32, shuffle=True, collate_fn=custom_collate)
-    # val_set = TestTrainSet("naruto.png", length=1)
-    # val_loader = DataLoader(val_set, batch_size=1, collate_fn=custom_collate)
+    val_set = TestTrainSet("naruto.png", length=1)
+    val_loader = DataLoader(val_set, batch_size=1, collate_fn=custom_collate)
 
     # load pretrained weights and ignore decoder and discriminator
     vqgan_model.init_from_ckpt(ckpt_path, ignore_keys=["decoder", "loss.discriminator"])
@@ -71,17 +71,18 @@ if __name__ == "__main__":
 
     # train
     checkpoint_callback = ModelCheckpoint(
-            monitor="train/aeloss",
+            monitor="val/rec_loss",
             dirpath="./checkpoints/",
-            filename="reverse-lr4_5e_6-{epoch:02d}-{train/aeloss:.2f}"
+            filename="reverse-lr4_5e_6-{epoch:02d}-{val/rec_loss:.2f}"
         )
     trainer = Trainer(
         accelerator="gpu",
         devices=[0, 1, 2, 3], 
         max_epochs=300,
-        callbacks = [checkpoint_callback]
+        callbacks = [checkpoint_callback],
+        check_val_every_n_epoch=10
     )
-    trainer.fit(vqgan_model, train_loader)
+    trainer.fit(vqgan_model, train_loader, val_loader)
     # save ckpt
     # trainer.save_checkpoint("checkpoints/reverse_100_epochs.ckpt")
 

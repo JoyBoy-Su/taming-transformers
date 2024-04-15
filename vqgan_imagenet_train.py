@@ -60,8 +60,8 @@ if __name__ == "__main__":
     print(vqgan_model)
 
     # train set
-    train_set = TestTrainSet("naruto.png")
-    train_loader = DataLoader(train_set, batch_size=32, shuffle=True, collate_fn=custom_collate)
+    train_set = TestTrainSet("naruto.png", length=6000)
+    train_loader = DataLoader(train_set, batch_size=16, shuffle=True, collate_fn=custom_collate)
     val_set = TestTrainSet("naruto.png", length=1)
     val_loader = DataLoader(val_set, batch_size=1, collate_fn=custom_collate)
 
@@ -73,12 +73,12 @@ if __name__ == "__main__":
     checkpoint_callback = ModelCheckpoint(
             monitor="val/rec_loss",
             dirpath="./checkpoints/",
-            filename="reverse-lr4_5e_6-{epoch:02d}-{val/rec_loss:.2f}"
+            filename="reverse-lr4_5e_3-bs16-{epoch:02d}-{val/rec_loss:.2f}"
         )
     trainer = Trainer(
         accelerator="gpu",
         devices=[0, 1, 2, 3], 
-        max_epochs=300,
+        max_epochs=100,
         callbacks = [checkpoint_callback],
         check_val_every_n_epoch=10
     )

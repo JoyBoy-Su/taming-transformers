@@ -142,7 +142,7 @@ class VQModel(pl.LightningModule):
     def configure_optimizers(self):
         # set optimizer for training VQModel
         # lr = self.learning_rate
-        lr = 4.5e-6
+        lr = 4.5e-3
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.quantize.parameters())+
